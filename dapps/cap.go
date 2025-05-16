@@ -44,6 +44,7 @@ var (
 type MintResultCap struct {
 	Success     bool
 	WalletIndex int
+	Cycle       int
 	TxHash      string
 	Fee         string
 	Error       error
@@ -116,7 +117,7 @@ func CUSD(numMints int) {
 			walletMutexes[walletIdx].Lock()
 			defer walletMutexes[walletIdx].Unlock()
 
-			results <- mintCUSD(activeWallets[walletIdx], walletIdx+1, cusdABI, client)
+			results <- mintCUSD(activeWallets[walletIdx], walletIdx+1, mintNum+1, cusdABI, client)
 		}(i, walletIndex)
 	}
 
@@ -129,7 +130,7 @@ func CUSD(numMints int) {
 	for res := range results {
 		if res.Success {
 			successCount++
-			fmt.Printf("[%s #%d]\n", cyan("Wallet"), res.WalletIndex)
+			fmt.Printf("[%s #%d] %s %s\n", cyan("Wallet"), res.WalletIndex, green("Cycle"), green(fmt.Sprint(res.Cycle)))
 			fmt.Printf("TxHash: %s\n", blue(EXPLORER_BASE_MEGAETH+res.TxHash))
 			fmt.Printf("Fee: %s\n", res.Fee)
 
@@ -164,7 +165,7 @@ func CUSD(numMints int) {
 	fmt.Printf("%s: %s/%s\n\n", yellow("Total successfully minted"), green(successCount), magenta(numMints))
 }
 
-func mintCUSD(privateKey string, walletIndex int, cusdABI abi.ABI, client *ethclient.Client) MintResultCap {
+func mintCUSD(privateKey string, walletIndex int, cycle int, cusdABI abi.ABI, client *ethclient.Client) MintResultCap {
 	pk, err := crypto.HexToECDSA(strings.TrimPrefix(privateKey, "0x"))
 	if err != nil {
 		return MintResultCap{Error: fmt.Errorf("invalid private key: %v", err)}
@@ -228,6 +229,7 @@ func mintCUSD(privateKey string, walletIndex int, cusdABI abi.ABI, client *ethcl
 	return MintResultCap{
 		Success:     true,
 		WalletIndex: walletIndex,
+		Cycle:       cycle,
 		TxHash:      signedTx.Hash().Hex(),
 		Fee:         yellow(feeStr + " ETH"),
 	}
